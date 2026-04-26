@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="theme-color" content="#050a14" />
+  <meta name="description" content="ScanAI — Point your camera at anything and get instant AI-powered identification with live web results." />
+
+  <!-- Open Graph (for GitHub / social sharing) -->
+  <meta property="og:title" content="ScanAI — AI Object Scanner" />
+  <meta property="og:description" content="Point your camera at anything. Get instant AI identification + live web search results." />
+  <meta property="og:type" content="website" />
+
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <title>ScanAI — AI Object Scanner</title>
+  <link rel="stylesheet" href="assets/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════
+       PARTICLE BACKGROUND
+  ════════════════════════════════════════ -->
+  <canvas id="particleCanvas"></canvas>
+
+  <!-- ═══════════════════════════════════════
+       HEADER
+  ════════════════════════════════════════ -->
+  <header id="header">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-hex">
+          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 3L35.5 12V28L20 37L4.5 28V12L20 3Z" stroke="url(#hexGrad)" stroke-width="1.5"/>
+            <path d="M20 10L29 15V25L20 30L11 25V15L20 10Z" fill="url(#hexFill)" opacity="0.4"/>
+            <circle cx="20" cy="20" r="3" fill="#00ffcc"/>
+            <defs>
+              <linearGradient id="hexGrad" x1="4" y1="3" x2="36" y2="37">
+                <stop offset="0%" stop-color="#00ffcc"/>
+                <stop offset="100%" stop-color="#0066ff"/>
+              </linearGradient>
+              <linearGradient id="hexFill" x1="11" y1="10" x2="29" y2="30">
+                <stop offset="0%" stop-color="#00ffcc"/>
+                <stop offset="100%" stop-color="#0066ff"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <span class="logo-name">SCAN<em>AI</em></span>
+          <span class="logo-tagline">VISUAL INTELLIGENCE SYSTEM</span>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div class="status-pill" id="statusPill">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="statusText">OFFLINE</span>
+        </div>
+        <button class="api-btn" id="apiKeyBtn" title="Set API Key">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="8" cy="8" r="3"/><path d="m11 11 9 9"/>
+            <path d="m16 16 2 2"/><path d="m18 14 2 2"/>
+          </svg>
+          API KEY
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════
+       API KEY MODAL
+  ════════════════════════════════════════ -->
+  <div class="overlay" id="apiOverlay">
+    <div class="api-modal">
+      <div class="api-modal-header">
+        <h2>🔑 Set Your API Key</h2>
+        <button class="close-x" id="closeApiModal">×</button>
+      </div>
+      <p class="api-info">
+        ScanAI uses the <strong>Anthropic Claude API</strong> with vision + web search.<br/>
+        Your key is stored only in your browser (localStorage). Never sent anywhere except Anthropic.
+      </p>
+      <div class="api-input-row">
+        <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." spellcheck="false" />
+        <button class="btn-save-key" id="saveApiKey">SAVE</button>
+      </div>
+      <p class="api-link">
+        Get a free key at
+        <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       MAIN CONTENT
+  ════════════════════════════════════════ -->
+  <main>
+
+    <!-- Hero intro (shown before camera starts) -->
+    <div class="hero" id="heroSection">
+      <div class="hero-badge">✦ AI-POWERED OBJECT RECOGNITION</div>
+      <h1 class="hero-title">Point. Scan.<br/><span>Discover.</span></h1>
+      <p class="hero-sub">Aim your camera at anything — products, plants, landmarks, animals — and get instant AI identification with live web search results.</p>
+      <div class="hero-features">
+        <div class="feature-chip">🔍 Visual AI</div>
+        <div class="feature-chip">🌐 Live Web Search</div>
+        <div class="feature-chip">⚡ Instant Results</div>
+        <div class="feature-chip">📱 Mobile Ready</div>
+      </div>
+      <button class="btn-hero" id="heroStartBtn">▶ LAUNCH SCANNER</button>
+    </div>
+
+    <!-- Camera section -->
+    <div class="scanner-section" id="scannerSection" style="display:none">
+
+      <!-- Viewport -->
+      <div class="viewport" id="viewport">
+        <video id="video" playsinline muted autoplay></video>
+        <canvas id="canvas"></canvas>
+
+        <!-- Captured freeze frame -->
+        <img id="frozenFrame" class="frozen-frame" alt="captured" style="display:none" />
+
+        <!-- Scan overlay -->
+        <div class="scan-overlay" id="scanOverlay">
+          <div class="corner c-tl"></div>
+          <div class="corner c-tr"></div>
+          <div class="corner c-bl"></div>
+          <div class="corner c-br"></div>
+          <div class="scan-line" id="scanLine"></div>
+          <div class="scan-grid" id="scanGrid"></div>
+        </div>
+
+        <!-- HUD top bar -->
+        <div class="hud-top">
+          <span class="hud-label" id="hudLabel">READY</span>
+          <span class="hud-res" id="hudRes">—</span>
+        </div>
+
+        <!-- HUD bottom -->
+        <div class="hud-bottom" id="hudBottom" style="display:none">
+          <div class="hud-progress">
+            <div class="hud-progress-bar" id="hudProgressBar"></div>
+          </div>
+          <span class="hud-status-text" id="hudStatusText">Analyzing...</span>
+        </div>
+
+        <!-- Reticle center -->
+        <div class="reticle" id="reticle">
+          <div class="reticle-ring r1"></div>
+          <div class="reticle-ring r2"></div>
+          <div class="reticle-dot"></div>
+        </div>
+      </div>
+
+      <!-- Control bar -->
+      <div class="controls">
+        <button class="ctrl-btn secondary" id="stopBtn" title="Stop Camera">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <rect x="4" y="4" width="16" height="16" rx="2"/>
+          </svg>
+        </button>
+
+        <button class="ctrl-btn primary" id="scanBtn">
+          <span class="scan-btn-inner">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              <path d="M8 11h6"/><path d="M11 8v6"/>
+            </svg>
+            <span id="scanBtnText">SCAN</span>
+          </span>
+          <span class="scan-pulse"></span>
+        </button>
+
+        <button class="ctrl-btn secondary" id="switchCamBtn" title="Switch Camera">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Error banner -->
+      <div class="error-banner" id="errorBanner" style="display:none">
+        <span>⚠</span>
+        <span id="errorText"></span>
+      </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         HISTORY
+    ════════════════════════════════════════ -->
+    <div class="history-section" id="historySection" style="display:none">
+      <div class="section-header">
+        <span class="section-title">RECENT SCANS</span>
+        <button class="clear-btn" id="clearHistory">CLEAR ALL</button>
+      </div>
+      <div class="history-grid" id="historyGrid"></div>
+    </div>
+
+  </main>
+
+  <!-- ═══════════════════════════════════════
+       RESULT PANEL (slide-in drawer)
+  ════════════════════════════════════════ -->
+  <div class="result-backdrop" id="resultBackdrop"></div>
+  <div class="result-panel" id="resultPanel">
+    <div class="panel-handle"></div>
+
+    <!-- Panel header -->
+    <div class="panel-header">
+      <div class="panel-thumb-wrap">
+        <img id="panelThumb" src="" alt="scanned" />
+        <div class="panel-thumb-overlay"></div>
+      </div>
+      <div class="panel-title-block">
+        <div class="panel-eyebrow">IDENTIFIED</div>
+        <div class="panel-name" id="panelName">—</div>
+        <div class="panel-conf-row">
+          <div class="panel-conf-bar-bg">
+            <div class="panel-conf-bar" id="panelConfBar"></div>
+          </div>
+          <span class="panel-conf-val" id="panelConfVal">—</span>
+        </div>
+      </div>
+      <button class="panel-close" id="panelClose">×</button>
+    </div>
+
+    <!-- Tags -->
+    <div class="panel-tags" id="panelTags"></div>
+
+    <!-- Tabs -->
+    <div class="panel-tabs">
+      <button class="p-tab active" data-tab="info">INFO</button>
+      <button class="p-tab" data-tab="web">WEB RESULTS</button>
+    </div>
+
+    <!-- Tab: Info -->
+    <div class="panel-body" id="ptabInfo">
+      <p class="panel-desc" id="panelDesc"></p>
+
+      <div class="info-grid" id="infoGrid"></div>
+    </div>
+
+    <!-- Tab: Web Results -->
+    <div class="panel-body" id="ptabWeb" style="display:none">
+      <div id="webResultsList"></div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       TOAST NOTIFICATION
+  ════════════════════════════════════════ -->
+  <div class="toast" id="toast"></div>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>
